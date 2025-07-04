@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day 26: React Toast Notification System</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen p-4 font-sans">
+
+    <div id="root"></div>
+    <div id="toast-root"></div>
+
+    <script type="text/babel">
+
+        // --- Child Component: Toast ---
+        const Toast = ({ message, type, onRemove }) => {
+            const [isExiting, setIsExiting] = React.useState(false);
+
+            React.useEffect(() => {
+                const exitTimer = setTimeout(() => {
+                    setIsExiting(true);
+                    // Wait for exit animation to complete before removing from DOM
+                    setTimeout(onRemove, 500);
+                }, 4500);
+
+                return () => clearTimeout(exitTimer);
+            }, []);
+
+            const typeClasses = {
+                success: { bg: 'bg-green-500', icon: 'fa-check-circle' },
+                error: { bg: 'bg-red-500', icon: 'fa-times-circle' },
+                info: { bg: 'bg-blue-500', icon: 'fa-info-circle' }
+            };
+
+            const classes = typeClasses[type] || typeClasses.info;
+            const animationClass = isExiting ? 'animate-slide-out' : 'animate-slide-in';
+
+            return (
+                <div className={`relative flex items-center text-white p-4 rounded-lg shadow-2xl mb-4 overflow-hidden ${animationClass} ${classes.bg}`}>
+                    <i className={`fas ${classes.icon} text-xl mr-4`}></i>
+                    <p className="font-semibold flex-grow">{message}</p>
+                    <button onClick={onRemove} className="ml-4 text-xl opacity-70 hover:opacity-100">&times;</button>
+                    <div className="absolute bottom-0 left-0 h-1 bg-white/30 animate-progress"></div>
+                </div>
+            );
+        };
+
+        // --- Toast Container Component (rendered via Portal) ---
+        const ToastContainer = ({ toasts, removeToast }) => {
+            const toastRoot = document.getElementById('toast-root');
+            if (!toastRoot) return null;
+
+            return ReactDOM.createPortal(
+                <div className="fixed top-5 right-5 z-50 w-full max-w-sm">
+                    {toasts.map(toast => (
+                        <Toast
+                            key={toast.id}
+                            message={toast.message}
+                            type={toast.type}
+                            onRemove={() => removeToast(toast.id)}
+                        />
+                    ))}
+                </div>,
+                toastRoot
+            );
+        };
+
+        // --- Main App Component ---
+        const App = () => {
+            const [toasts, setToasts] = React.useState([]);
+
+            const addToast = (type, message) => {
+                const id = new Date().getTime();
+                setToasts(currentToasts => [{ id, type, message }, ...currentToasts]);
+            };
+
+            const removeToast = (id) => {
+                setToasts(currentToasts => currentToasts.filter(toast => toast.id !== id));
+            };
+
+            const Button = ({ onClick, children, className }) => (
+                <button
+                    onClick={onClick}
+                    className={`font-semibold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 ${className}`}
+                >
+                    {children}
+                </button>
+            );
+
+            return (
+                <div className="bg-gray-800/50 backdrop-blur-xl border border-white/10 p-8 rounded-2xl shadow-lg text-center">
+                    <h1 className="text-3xl font-bold text-white mb-6">Toast Notification System</h1>
+                    <div className="flex justify-center gap-4">
+                        <Button
+                            onClick={() => addToast('success', 'Profile saved successfully!')}
+                            className="bg-green-500 text-white"
+                        >
+                            <i className="fas fa-check mr-2"></i>Show Success
+                        </Button>
+                        <Button
+                            onClick={() => addToast('error', 'Failed to upload file.')}
+                            className="bg-red-500 text-white"
+                        >
+                            <i className="fas fa-times mr-2"></i>Show Error
+                        </Button>
+                         <Button
+                            onClick={() => addToast('info', 'A new update is available.')}
+                            className="bg-blue-500 text-white"
+                        >
+                            <i className="fas fa-info-circle mr-2"></i>Show Info
+                        </Button>
+                    </div>
+                    <ToastContainer toasts={toasts} removeToast={removeToast} />
+                </div>
+            );
+        };
+
+        // --- Tailwind CSS Animation ---
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'slide-in': 'slideIn 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards',
+                        'slide-out': 'slideOut 0.5s ease-out forwards',
+                        'progress': 'progress 4.5s linear forwards',
+                    },
+                    keyframes: {
+                        slideIn: {
+                            '0%': { opacity: '0', transform: 'translateY(-100%)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        slideOut: {
+                            '0%': { opacity: '1', transform: 'translateX(0)' },
+                            '100%': { opacity: '0', transform: 'translateX(110%)' },
+                        },
+                        progress: {
+                            '0%': { width: '100%' },
+                            '100%': { width: '0%' },
+                        }
+                    },
+                },
+            },
+        };
+
+        // --- Rendering the App ---
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+
+</body>
+</html>
